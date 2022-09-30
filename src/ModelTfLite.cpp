@@ -2,8 +2,11 @@
 
 #include <cassert>
 #include <iostream>
+#include <cstring>
+
 #include "tensorflow/lite/optional_debug_tools.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
+#include "tensorflow/lite/string_util.h"
 
 constexpr unsigned int BATCH_SIZE=100;
 constexpr unsigned int NB_EPOCHES=100;
@@ -158,15 +161,46 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
 
 bool ModelTfLite::Save(const std::string& checkpointPath)
 {
-    return true;
+    return SaveOrRestore(checkpointPath, true);
 }
 
 bool ModelTfLite::Restore(const std::string& checkpointPath)
 {
-    return true;
+    return SaveOrRestore(checkpointPath, false);
 }
 
+bool ModelTfLite::SaveOrRestore(const std::string& checkpointPath, bool save)
+{
+    TfLiteStatus status;
 
+    std::string runner_name = (save) ? "save" : "restore";
+
+    tflite::SignatureRunner* runner = interpreter_->GetSignatureRunner(runner_name.c_str());
+    assert(runner != nullptr);
+
+    status = runner->AllocateTensors();
+    if(status != kTfLiteOk) {
+        std::cout << "Failed to allocate inference signature tensors \n";
+        return false;
+    }
+
+    TfLiteTensor* input_tensor = runner->input_tensor("checkpoint_path");
+    assert(input_tensor != nullptr);
+
+    PrintTensorInfo(input_tensor);
+
+    tflite::DynamicBuffer buf;
+    buf.AddString(checkpointPath.c_str(), checkpointPath.size());
+    buf.WriteToTensor(input_tensor, /*new_shape=*/TfLiteIntArrayCreate(0));
+
+    status = runner->Invoke();
+    if(status != kTfLiteOk) {
+        std::cout << "Failed to run training signature \n";
+        return false;
+    }
+
+    return true;
+}
 
 void ModelTfLite::PrintInterpreterState()
 {

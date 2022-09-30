@@ -3,8 +3,14 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <fstream>
 
 #include "ModelTfLite.hpp"
+
+static bool isFile(const std::string& name) {
+    std::ifstream f(name.c_str());
+    return f.good();
+}
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -24,11 +30,21 @@ int main(int argc, char* argv[]) {
         std::cout << "x: " << train_inputs[i] << " y: " << train_targets[i] << '\n';
     }
 
-    m.Predict(0.5);
+    std::string ckpt = "checkpoint.ckpt";
 
+    if (isFile(ckpt)) {
+        std::cout << "Checkpoint file found restore & infer \n";
+
+        m.Restore("checkpoint.ckpt");
+        m.Predict(0.5);
+        return 0;
+    }
+
+    m.Predict(0.5);
     m.Train(train_inputs, train_targets);
-
     m.Predict(0.5);
+
+    m.Save("checkpoint.ckpt");
 
     //m.PrintInterpreterState();
 

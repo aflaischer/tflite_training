@@ -21,6 +21,8 @@ public:
     bool Restore(const std::string& checkpointPath);
 
 private:
+    bool SaveOrRestore(const std::string& checkpointPath, bool save);
+
     std::unique_ptr<tflite::FlatBufferModel> model_;
     tflite::ops::builtin::BuiltinOpResolver resolver_;
     std::unique_ptr<tflite::Interpreter> interpreter_;

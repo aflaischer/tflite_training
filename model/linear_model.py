@@ -45,6 +45,28 @@ class MyModel(tf.keras.Model):
             "output": output
         }
 
+    @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.string)])
+    def save(self, checkpoint_path):
+        tensor_names = [weight.name for weight in self.model.weights]
+        tensors_to_save = [weight.read_value() for weight in self.model.weights]
+        tf.raw_ops.Save(
+            filename=checkpoint_path, tensor_names=tensor_names,
+            data=tensors_to_save, name='save')
+        return {
+            "checkpoint_path": checkpoint_path
+        }
+
+    @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.string)])
+    def restore(self, checkpoint_path):
+        restored_tensors = {}
+        for var in self.model.weights:
+            restored = tf.raw_ops.Restore(
+                file_pattern=checkpoint_path, tensor_name=var.name, dt=var.dtype,
+                name='restore')
+            var.assign(restored)
+            restored_tensors[var.name] = restored
+        return restored_tensors
+
 model = MyModel()
 
 model_path = "./output"
@@ -57,7 +79,11 @@ tf.saved_model.save(
         'train' :
             model.train.get_concrete_function(),
         'infer' :
-            model.infer.get_concrete_function()
+            model.infer.get_concrete_function(),
+        'save' :
+            model.save.get_concrete_function(),
+        'restore' :
+            model.restore.get_concrete_function()
         })
 
 # Training in python
