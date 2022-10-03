@@ -88,8 +88,8 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
     tflite::SignatureRunner* train_runner = interpreter_->GetSignatureRunner("train");
     assert(train_runner != nullptr);
 
-    //train_runner->ResizeInputTensor("x", {BATCH_SIZE, 1});
-    //train_runner->ResizeInputTensor("y", {BATCH_SIZE, 1});
+    train_runner->ResizeInputTensor("x", {BATCH_SIZE, 1});
+    train_runner->ResizeInputTensor("y", {BATCH_SIZE, 1});
     status = train_runner->AllocateTensors();
     if(status != kTfLiteOk) {
         std::cout << "Failed to allocate training signature tensors \n";
@@ -111,9 +111,9 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
     PrintTensorInfo(input_tensor_targets);
     PrintTensorInfo(output_tensor);
 
-/*
+
     auto input_features = input_tensor_features->data.f;
-    auto input_targets = input_tensor_features->data.f;
+    auto input_targets = input_tensor_targets->data.f;
 
     for (int i = 0; i < GetTensorSize(input_tensor_features); i++)
     {
@@ -127,29 +127,6 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
         if(status != kTfLiteOk) {
             std::cout << "Failed to run training signature \n";
             return false;
-        }
-
-        float* output = output_tensor->data.f;
-        std::cout << "epoch " << i << " Loss is: " << *output << '\n';
-    }
-*/
-
-    auto input_features = input_tensor_features->data.f;
-    auto input_targets = input_tensor_targets->data.f;
-
-    for(int i = 0; i < NB_EPOCHES; i++)
-    {
-        for(int j = 0; j < features.size(); j++) {
-            *input_features = features[j];
-            *input_targets = targets[j];
-
-            //std::cout << "Training" << "x: " << *input_features << " y: " << *input_targets << '\n';
-
-            status = train_runner->Invoke();
-            if(status != kTfLiteOk) {
-                std::cout << "Failed to run training signature \n";
-                return false;
-            }
         }
 
         float* output = output_tensor->data.f;
