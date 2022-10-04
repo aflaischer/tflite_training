@@ -183,3 +183,20 @@ void ModelTfLite::PrintInterpreterState()
 {
     tflite::PrintInterpreterState(interpreter_.get());
 }
+
+size_t ModelTfLite::GetNumSignatures()
+{
+    return interpreter_->subgraphs_size();
+}
+
+void ModelTfLite::PrintSignatures()
+{
+    int size = GetNumSignatures();
+
+    std::cout << "Signature names: ";
+    for (int i = 0; i < size; i++)
+    {
+        std::cout << interpreter_->subgraph(i)->GetName() << ", ";
+    }
+    std::cout << "\n";
+}

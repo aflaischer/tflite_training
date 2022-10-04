@@ -21,6 +21,9 @@ int main(int argc, char* argv[]) {
 
     ModelTfLite m(filename);
 
+    std::cout << "Number of signatures: " << m.GetNumSignatures() << '\n';
+    m.PrintSignatures();
+
     //Create features/targets buffers
     std::vector<float> train_inputs, train_targets;
     for (int i = 0; i < 100; i++) {

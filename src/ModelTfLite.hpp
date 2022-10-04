@@ -19,6 +19,8 @@ public:
     bool Train(std::vector<float> features, std::vector<float> targets);
     bool Save(const std::string& checkpointPath);
     bool Restore(const std::string& checkpointPath);
+    size_t GetNumSignatures();
+    void PrintSignatures();
 
 private:
     bool SaveOrRestore(const std::string& checkpointPath, bool save);
