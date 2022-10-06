@@ -136,6 +136,64 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
     return true;
 }
 
+float ModelTfLite::GetAccuracy(std::vector<float> features, std::vector<float> targets)
+{
+    TfLiteStatus status;
+
+    assert(features.size() == targets.size());
+
+    tflite::SignatureRunner* train_runner = interpreter_->GetSignatureRunner("accuracy");
+    assert(train_runner != nullptr);
+
+    train_runner->ResizeInputTensor("x", {BATCH_SIZE, 1});
+    train_runner->ResizeInputTensor("y", {BATCH_SIZE, 1});
+    status = train_runner->AllocateTensors();
+    if(status != kTfLiteOk) {
+        std::cout << "Failed to allocate accuracy signature tensors \n";
+        return -1;
+    }
+
+    TfLiteTensor* input_tensor_features = train_runner->input_tensor("x");
+    TfLiteTensor* input_tensor_targets = train_runner->input_tensor("y");
+    const TfLiteTensor* mae_tensor = train_runner->output_tensor("mean_absolute_error");
+    const TfLiteTensor* mae_percent_tensor = train_runner->output_tensor("mean_absolute_percentage_error");
+
+    assert(input_tensor_features != nullptr);
+    assert(input_tensor_targets != nullptr);
+    assert(mae_tensor != nullptr);
+    assert(mae_percent_tensor != nullptr);
+
+    TfLiteType input_features_data_type = input_tensor_features->type;
+    TfLiteType input_targets_data_type = input_tensor_targets->type;
+
+    PrintTensorInfo(input_tensor_features);
+    PrintTensorInfo(input_tensor_targets);
+    PrintTensorInfo(mae_tensor);
+    PrintTensorInfo(mae_percent_tensor);
+
+
+    auto input_features = input_tensor_features->data.f;
+    auto input_targets = input_tensor_targets->data.f;
+
+    for (int i = 0; i < GetTensorSize(input_tensor_features); i++)
+    {
+        input_features[i] = features[i];
+        input_targets[i] = targets[i];
+    }
+
+    status = train_runner->Invoke();
+    if(status != kTfLiteOk) {
+        std::cout << "Failed to run accuracy signature \n";
+        return -1;
+    }
+
+    float* output = mae_tensor->data.f;
+    std::cout << "MAE Accuracy is: " << *output << '\n';
+    std::cout << "MAE \% Accuracy is: " << *mae_percent_tensor->data.f << '\n';
+
+    return *output;
+}
+
 bool ModelTfLite::Save(const std::string& checkpointPath)
 {
     return SaveOrRestore(checkpointPath, true);

@@ -17,6 +17,7 @@ public:
 
     bool Predict(float input);
     bool Train(std::vector<float> features, std::vector<float> targets);
+    float GetAccuracy(std::vector<float> features, std::vector<float> targets);
     bool Save(const std::string& checkpointPath);
     bool Restore(const std::string& checkpointPath);
     size_t GetNumSignatures();

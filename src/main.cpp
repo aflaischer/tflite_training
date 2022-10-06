@@ -40,12 +40,14 @@ int main(int argc, char* argv[]) {
 
         m.Restore("checkpoint.ckpt");
         m.Predict(0.5);
+        m.GetAccuracy(train_inputs, train_targets);
         return 0;
     }
 
     m.Predict(0.5);
     m.Train(train_inputs, train_targets);
     m.Predict(0.5);
+    m.GetAccuracy(train_inputs, train_targets);
 
     m.Save("checkpoint.ckpt");
 

@@ -16,7 +16,12 @@ class MyModel(tf.keras.Model):
 
         self.model.compile(
             optimizer='sgd', #tf.keras.optimizers.Adam(learning_rate=0.001),
-            loss=tf.keras.losses.MeanSquaredError())
+            loss=tf.keras.losses.MeanSquaredError(),
+            metrics=[
+                tf.keras.metrics.MeanAbsoluteError(),
+                tf.keras.metrics.MeanAbsolutePercentageError()
+                ]
+            )
 
     @tf.function(input_signature=[tf.TensorSpec([None, INPUT_SIZE], tf.float32, name="inputs")])
     def __call__(self, x):
@@ -67,6 +72,22 @@ class MyModel(tf.keras.Model):
             restored_tensors[var.name] = restored
         return restored_tensors
 
+    @tf.function(input_signature=[
+        tf.TensorSpec([None, INPUT_SIZE], tf.float32),
+        tf.TensorSpec([None, OUTPUT_SIZE], tf.float32),
+    ])
+    def accuracy(self, x, y):
+        prediction = self.model(x)
+        self.model.compiled_metrics.update_state(y, prediction)
+        return_metrics = {}
+        for metric in self.model.metrics:
+            result = metric.result()
+            if isinstance(result, dict):
+                return_metrics.update(result)
+            else:
+                return_metrics[metric.name] = result
+        return return_metrics
+
 model = MyModel()
 
 model_path = "./output"
@@ -74,8 +95,6 @@ tf.saved_model.save(
     model,
     model_path,
     signatures={
-        'serving_default' :
-            model.__call__.get_concrete_function(tf.TensorSpec([None, 1], tf.float32, name="inputs")),
         'train' :
             model.train.get_concrete_function(),
         'infer' :
@@ -83,7 +102,9 @@ tf.saved_model.save(
         'save' :
             model.save.get_concrete_function(),
         'restore' :
-            model.restore.get_concrete_function()
+            model.restore.get_concrete_function(),
+        'accuracy' :
+            model.accuracy.get_concrete_function()
         })
 
 # Training in python
@@ -105,6 +126,8 @@ for _ in range(NUM_EPOCHS):
     print("loss: ", result['loss'])
 print("predict after training: ", model.infer([[0.5]]))
 
+acc = model.accuracy(x, y)
+print("Accuracy is: ", acc)
 
 # Convert to tflite
 
@@ -114,7 +137,8 @@ converter = tf.lite.TFLiteConverter.from_saved_model(
         'train',
         'infer',
         'save',
-        'restore'
+        'restore',
+        'accuracy'
         ])
 converter.target_spec.supported_ops = [
   tf.lite.OpsSet.TFLITE_BUILTINS, # enable TensorFlow Lite ops.
