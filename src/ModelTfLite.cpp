@@ -46,12 +46,13 @@ ModelTfLite::~ModelTfLite()
 {
 }
 
-bool ModelTfLite::Predict(float input)
+bool ModelTfLite::Predict(std::vector<float> inputs)
 {
     TfLiteStatus status;
     tflite::SignatureRunner* infer_runner = interpreter_->GetSignatureRunner("infer");
     assert(infer_runner != nullptr);
 
+    infer_runner->ResizeInputTensor("x", {static_cast<int>(inputs.size()), 1});
     status = infer_runner->AllocateTensors();
     if(status != kTfLiteOk) {
         std::cout << "Failed to allocate inference signature tensors \n";
@@ -60,9 +61,13 @@ bool ModelTfLite::Predict(float input)
 
     TfLiteTensor* input_tensor = infer_runner->input_tensor("x");
     assert(input_tensor != nullptr);
+    PrintTensorInfo(input_tensor);
 
-    auto input_data = input_tensor->data.f;
-    *input_data = input;
+    auto tensor_inputs = input_tensor->data.f;
+    for (int i = 0; i < GetTensorSize(input_tensor); i++)
+    {
+        tensor_inputs[i] = inputs[i];
+    }
 
     status = infer_runner->Invoke();
     if(status != kTfLiteOk) {
@@ -72,9 +77,15 @@ bool ModelTfLite::Predict(float input)
 
     const TfLiteTensor* output_tensor = infer_runner->output_tensor("output");
     assert(output_tensor != nullptr);
+    PrintTensorInfo(output_tensor);
 
-    float* output = output_tensor->data.f;
-    std::cout << "Output is: " << *output << '\n';
+    auto tensor_outputs = output_tensor->data.f;
+    std::cout << "Output are: ";
+    for (int i = 0; i < GetTensorSize(output_tensor); i++)
+    {
+        std::cout << tensor_outputs[i] << ',';
+    }
+    std::cout << "\n";
 
     return true;
 }
@@ -115,20 +126,26 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
     auto input_features = input_tensor_features->data.f;
     auto input_targets = input_tensor_targets->data.f;
 
-    for (int i = 0; i < GetTensorSize(input_tensor_features); i++)
-    {
-        input_features[i] = features[i];
-        input_targets[i] = targets[i];
-    }
 
-    for(int i = 0; i < NB_EPOCHES; i++)
+
+    for (int i = 0; i < NB_EPOCHES; i++)
     {
-        status = train_runner->Invoke();
-        if(status != kTfLiteOk) {
-            std::cout << "Failed to run training signature \n";
-            return false;
+        for (int b = 0; b < features.size(); b += BATCH_SIZE)
+        {
+            for (int i = 0; i < GetTensorSize(input_tensor_features); i++)
+            {
+                input_features[i] = features[i + b];
+                input_targets[i] = targets[i + b];
+            }
+
+            status = train_runner->Invoke();
+            if(status != kTfLiteOk) {
+                std::cout << "Failed to run training signature \n";
+                return false;
+            }
         }
 
+        // Get Loss from last batch
         float* output = output_tensor->data.f;
         std::cout << "epoch " << i << " Loss is: " << *output << '\n';
     }
@@ -175,7 +192,7 @@ float ModelTfLite::GetAccuracy(std::vector<float> features, std::vector<float> t
     auto input_features = input_tensor_features->data.f;
     auto input_targets = input_tensor_targets->data.f;
 
-    for (int i = 0; i < GetTensorSize(input_tensor_features); i++)
+    for (int i = 0; i < BATCH_SIZE; i++)
     {
         input_features[i] = features[i];
         input_targets[i] = targets[i];

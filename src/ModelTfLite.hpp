@@ -15,7 +15,7 @@ public:
 
     void PrintInterpreterState();
 
-    bool Predict(float input);
+    bool Predict(std::vector<float> inputs);
     bool Train(std::vector<float> features, std::vector<float> targets);
     float GetAccuracy(std::vector<float> features, std::vector<float> targets);
     bool Save(const std::string& checkpointPath);

@@ -10,7 +10,7 @@ class MyModel(tf.keras.Model):
         super().__init__()
         self.model = tf.keras.Sequential([
             tf.keras.layers.InputLayer(input_shape=(INPUT_SIZE,)),
-            tf.keras.layers.Dense(10, activation='sigmoid', kernel_initializer='glorot_normal', bias_initializer=tf.keras.initializers.Ones(), name='dense_1'),
+            tf.keras.layers.Dense(10, activation='relu', kernel_initializer='glorot_normal', name='dense_1'),
             tf.keras.layers.Dense(OUTPUT_SIZE, name='output')
         ])
 
