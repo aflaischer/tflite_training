@@ -115,18 +115,12 @@ bool ModelTfLite::Train(std::vector<float> features, std::vector<float> targets)
     assert(input_tensor_targets != nullptr);
     assert(output_tensor != nullptr);
 
-    TfLiteType input_features_data_type = input_tensor_features->type;
-    TfLiteType input_targets_data_type = input_tensor_targets->type;
-
     PrintTensorInfo(input_tensor_features);
     PrintTensorInfo(input_tensor_targets);
     PrintTensorInfo(output_tensor);
 
-
     auto input_features = input_tensor_features->data.f;
     auto input_targets = input_tensor_targets->data.f;
-
-
 
     for (int i = 0; i < NB_EPOCHES; i++)
     {
@@ -180,14 +174,10 @@ float ModelTfLite::GetAccuracy(std::vector<float> features, std::vector<float> t
     assert(mae_tensor != nullptr);
     assert(mae_percent_tensor != nullptr);
 
-    TfLiteType input_features_data_type = input_tensor_features->type;
-    TfLiteType input_targets_data_type = input_tensor_targets->type;
-
     PrintTensorInfo(input_tensor_features);
     PrintTensorInfo(input_tensor_targets);
     PrintTensorInfo(mae_tensor);
     PrintTensorInfo(mae_percent_tensor);
-
 
     auto input_features = input_tensor_features->data.f;
     auto input_targets = input_tensor_targets->data.f;
