@@ -21,17 +21,17 @@ class DNNModel(tf.keras.Model):
             loss=tf.keras.losses.MeanSquaredError())
 
     @tf.function(input_signature=[tf.TensorSpec([None, INPUT_SIZE], tf.float32, name="inputs")])
-    def __call__(self, x):
-        return self.model(x)
+    def __call__(self, features):
+        return self.model(features)
 
     @tf.function(input_signature=[
         tf.TensorSpec([None, INPUT_SIZE], tf.float32),
         tf.TensorSpec([None, OUTPUT_SIZE], tf.float32),
     ])
-    def train(self, x, y):
+    def train(self, features, targets):
         with tf.GradientTape() as tape:
-            prediction = self.model(x)
-            loss = self.model.loss(y, prediction)
+            prediction = self.model(features)
+            loss = self.model.loss(targets, prediction)
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.model.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
@@ -41,8 +41,8 @@ class DNNModel(tf.keras.Model):
     @tf.function(input_signature=[
         tf.TensorSpec([None, INPUT_SIZE], tf.float32),
     ])
-    def infer(self, x):
-        output = self.model(x)
+    def infer(self, features):
+        output = self.model(features)
         return {
             "output": output
         }

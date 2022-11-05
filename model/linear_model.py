@@ -18,23 +18,22 @@ class MyModel(tf.keras.Model):
             optimizer='sgd', #tf.keras.optimizers.Adam(learning_rate=0.001),
             loss=tf.keras.losses.MeanSquaredError(),
             metrics=[
-                tf.keras.metrics.MeanAbsoluteError(),
-                tf.keras.metrics.MeanAbsolutePercentageError()
+                tf.keras.metrics.MeanAbsoluteError(name='accuracy')
                 ]
             )
 
     @tf.function(input_signature=[tf.TensorSpec([None, INPUT_SIZE], tf.float32, name="inputs")])
-    def __call__(self, x):
-        return self.model(x)
+    def __call__(self, features):
+        return self.model(features)
 
     @tf.function(input_signature=[
         tf.TensorSpec([None, INPUT_SIZE], tf.float32),
         tf.TensorSpec([None, OUTPUT_SIZE], tf.float32),
     ])
-    def train(self, x, y):
+    def train(self, features, targets):
         with tf.GradientTape() as tape:
-            prediction = self.model(x)
-            loss = self.model.loss(y, prediction)
+            prediction = self.model(features)
+            loss = self.model.loss(targets, prediction)
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.model.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
@@ -44,8 +43,8 @@ class MyModel(tf.keras.Model):
     @tf.function(input_signature=[
         tf.TensorSpec([None, INPUT_SIZE], tf.float32),
     ])
-    def infer(self, x):
-        output = self.model(x)
+    def infer(self, features):
+        output = self.model(features)
         return {
             "output": output
         }
@@ -76,9 +75,9 @@ class MyModel(tf.keras.Model):
         tf.TensorSpec([None, INPUT_SIZE], tf.float32),
         tf.TensorSpec([None, OUTPUT_SIZE], tf.float32),
     ])
-    def accuracy(self, x, y):
-        prediction = self.model(x)
-        self.model.compiled_metrics.update_state(y, prediction)
+    def accuracy(self, features, targets):
+        prediction = self.model(features)
+        self.model.compiled_metrics.update_state(targets, prediction)
         return_metrics = {}
         for metric in self.model.metrics:
             result = metric.result()
