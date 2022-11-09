@@ -5,6 +5,14 @@ from pathlib import Path
 INPUT_SIZE = 1
 OUTPUT_SIZE = 1
 
+# Custom metric for accuracy
+def mean_absolute_percentage_accuracy(y_true, y_pred):
+    return 100 - tf.keras.losses.mean_absolute_percentage_error(y_true, y_pred)
+
+class MeanAbsolutePercentageAccuracy(tf.keras.metrics.MeanMetricWrapper):
+    def __init__(self, name="mean_absolute_percentage_accuracy", dtype=None):
+        super().__init__(mean_absolute_percentage_accuracy, name, dtype=dtype)
+
 class MyModel(tf.keras.Model):
     def __init__(self):
         super().__init__()
@@ -15,10 +23,10 @@ class MyModel(tf.keras.Model):
         ])
 
         self.model.compile(
-            optimizer='sgd', #tf.keras.optimizers.Adam(learning_rate=0.001),
+            optimizer='sgd',
             loss=tf.keras.losses.MeanSquaredError(),
             metrics=[
-                tf.keras.metrics.MeanAbsoluteError(name='accuracy')
+                MeanAbsolutePercentageAccuracy(name='accuracy')
                 ]
             )
 
@@ -146,3 +154,5 @@ converter.target_spec.supported_ops = [
 tflite_model = converter.convert()
 converter.experimental_enable_resource_variables = True
 open("linear_model.tflite", "wb").write(tflite_model)
+
+tf.lite.experimental.Analyzer.analyze(model_content=tflite_model)
