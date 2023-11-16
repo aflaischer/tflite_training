@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iostream>
 #include <cstring>
+#include <sstream>
 
 #include "tensorflow/lite/optional_debug_tools.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
@@ -44,6 +45,77 @@ ModelTfLite::ModelTfLite(const std::string& path)
 
 ModelTfLite::~ModelTfLite()
 {
+}
+
+
+void ModelTfLite::PrintInfoTensor()
+{
+    std::stringstream ssInput, ssOutput;
+
+    ssInput << "[";
+    for(int i = 0; i < interpreter_->input_tensor(0)->dims_signature->size; i++)
+        ssInput << interpreter_->input_tensor(0)->dims_signature->data[i] << ",";
+    ssInput << "]";
+
+    ssOutput << "[";
+    for(int i = 0; i < interpreter_->output_tensor(0)->dims_signature->size; i++)
+        ssOutput << interpreter_->output_tensor(0)->dims_signature->data[i] << ",";
+    ssOutput << "]";
+
+    std::cout << "dims_signature input shape: " << ssInput.str() << "\n";
+    std::cout << "dims_signature output shape: " << ssOutput.str() << "\n";
+
+    ssInput.str("");
+    ssOutput.str("");
+
+    ssInput << "[";
+    for(int i = 0; i < interpreter_->input_tensor(0)->dims->size; i++)
+        ssInput << interpreter_->input_tensor(0)->dims->data[i] << ",";
+    ssInput << "]";
+
+    ssOutput << "[";
+    for(int i = 0; i < interpreter_->output_tensor(0)->dims->size; i++)
+        ssOutput << interpreter_->output_tensor(0)->dims->data[i] << ",";
+    ssOutput << "]";
+
+    std::cout << "dims input shape: " << ssInput.str() << "\n";
+    std::cout << "dims output shape: " << ssOutput.str() << "\n";
+}
+
+bool ModelTfLite::Invoke()
+{
+    TfLiteStatus status;
+
+    interpreter_->AllocateTensors();
+
+    PrintInfoTensor();
+
+    void* inputTensor = interpreter_->input_tensor(0)->data.data;
+    void* outputTensor = interpreter_->output_tensor(0)->data.data;
+    size_t inputTensorSize = interpreter_->input_tensor(0)->bytes;
+    size_t outputTensorSize = interpreter_->output_tensor(0)->bytes;
+    std::cout << "Before Invoke inputTensor= " << inputTensor << " outputTensor= " << outputTensor << "\n";
+    std::cout << "Before Invoke outputTensorSize= " << outputTensorSize << "\n" ;
+    std::cout << "Before Invoke inputTensorSize= " << inputTensorSize << "\n" ;
+
+    status = interpreter_->Invoke();
+
+    inputTensor = interpreter_->input_tensor(0)->data.data;
+    outputTensor = interpreter_->output_tensor(0)->data.data;
+    inputTensorSize = interpreter_->input_tensor(0)->bytes;
+    outputTensorSize = interpreter_->output_tensor(0)->bytes;
+    std::cout << "After Invoke inputTensor= " << inputTensor << " outputTensor= " << outputTensor << "\n";
+    std::cout << "After Invoke outputTensorSize= " << outputTensorSize << "\n" ;
+    std::cout << "After Invoke inputTensorSize= " << inputTensorSize << "\n" ;
+
+    PrintInfoTensor();
+
+    if(status != kTfLiteOk) {
+        std::cout << "Failed to run Invoke(): " << status << "\n" ;
+        return false;
+    }
+
+    return true;
 }
 
 bool ModelTfLite::Predict(std::vector<float> inputs)

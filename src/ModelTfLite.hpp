@@ -23,6 +23,9 @@ public:
     size_t GetNumSignatures();
     void PrintSignatures();
 
+    bool Invoke();
+    void PrintInfoTensor();
+
 private:
     bool SaveOrRestore(const std::string& checkpointPath, bool save);
 
