@@ -8,6 +8,7 @@
 #include "tensorflow/lite/optional_debug_tools.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
 #include "tensorflow/lite/string_util.h"
+#include "tensorflow/lite/signature_runner.h"
 
 constexpr unsigned int BATCH_SIZE=100;
 constexpr unsigned int NB_EPOCHES=100;

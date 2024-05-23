@@ -2,7 +2,7 @@ file(GLOB ${PROJECT_NAME}_EXE_SRC
     src/*.cpp
 )
 
-set(TENSORFLOW_SOURCE_DIR "/tensorflow_src" CACHE PATH
+set(TENSORFLOW_SOURCE_DIR "/tmp/tensorflow" CACHE PATH
   "Directory that contains the TensorFlow project"
 )
 
