@@ -11,7 +11,7 @@ class ModelTfLite
 {
 public:
     ModelTfLite(const std::string& path);
-    ~ModelTfLite();
+    ~ModelTfLite() = default;
 
     void PrintInterpreterState();
 
@@ -29,7 +29,7 @@ public:
 private:
     bool SaveOrRestore(const std::string& checkpointPath, bool save);
 
-    std::unique_ptr<tflite::FlatBufferModel> model_;
+    std::unique_ptr<tflite::FlatBufferModel> model_ = nullptr;
     tflite::ops::builtin::BuiltinOpResolver resolver_;
-    std::unique_ptr<tflite::Interpreter> interpreter_;
+    std::unique_ptr<tflite::Interpreter> interpreter_ = nullptr;
 };

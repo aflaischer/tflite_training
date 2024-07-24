@@ -44,11 +44,6 @@ ModelTfLite::ModelTfLite(const std::string& path)
     assert(interpreter_ != nullptr);
 }
 
-ModelTfLite::~ModelTfLite()
-{
-}
-
-
 void ModelTfLite::PrintInfoTensor()
 {
     std::stringstream ssInput, ssOutput;
@@ -306,7 +301,7 @@ bool ModelTfLite::SaveOrRestore(const std::string& checkpointPath, bool save)
 
     status = runner->Invoke();
     if(status != kTfLiteOk) {
-        std::cout << "Failed to run training signature \n";
+        std::cout << "Failed to run" + runner_name + "signature \n";
         return false;
     }
 
