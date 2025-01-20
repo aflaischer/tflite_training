@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
+
 import tensorflow as tf
 import argparse
-
-
 
 def main():
     parser = argparse.ArgumentParser(description='Analyze tflite model')

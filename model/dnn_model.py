@@ -1,28 +1,39 @@
+#!/usr/bin/env python3
+
+import os
 import tensorflow as tf
-import numpy as np
-from pathlib import Path
+import keras
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
 
 INPUT_SIZE = 40
 OUTPUT_SIZE = 1
 
-class DNNModel(tf.keras.Model):
+class DNNModel(tf.Module):
     def __init__(self):
         super().__init__()
-        self.model = tf.keras.Sequential([
-            tf.keras.layers.InputLayer(input_shape=(INPUT_SIZE,)),
-            tf.keras.layers.Dense(100, activation='sigmoid', kernel_initializer='glorot_normal', name='dense_1'),
-            tf.keras.layers.Dense(100, activation='sigmoid', kernel_initializer='glorot_normal', name='dense_2'),
-            tf.keras.layers.Dense(100, activation='sigmoid', kernel_initializer='glorot_normal', name='dense_3'),
-            tf.keras.layers.Dense(OUTPUT_SIZE, name='output')
+        self.model = keras.Sequential([
+            keras.layers.InputLayer(shape=(INPUT_SIZE,)),
+            keras.layers.Dense(100, activation='sigmoid', kernel_initializer='glorot_normal', name='dense_1'),
+            keras.layers.Dense(100, activation='sigmoid', kernel_initializer='glorot_normal', name='dense_2'),
+            keras.layers.Dense(100, activation='sigmoid', kernel_initializer='glorot_normal', name='dense_3'),
+            keras.layers.Dense(OUTPUT_SIZE, name='output')
         ])
 
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-            loss=tf.keras.losses.MeanSquaredError())
+            optimizer=keras.optimizers.Adam(learning_rate=0.001),
+            loss=keras.losses.MeanSquaredError())
+
+        self.signatures = [
+            'train',
+            'infer',
+            'save',
+            'restore'
+        ]
 
     @tf.function(input_signature=[tf.TensorSpec([None, INPUT_SIZE], tf.float32, name="inputs")])
-    def __call__(self, features):
-        return self.model(features)
+    def __call__(self, x):
+        return self.model(x)
 
     @tf.function(input_signature=[
         tf.TensorSpec([None, INPUT_SIZE], tf.float32),
@@ -35,6 +46,7 @@ class DNNModel(tf.keras.Model):
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.model.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
+
         result = {"loss": loss}
         return result
 
@@ -44,13 +56,13 @@ class DNNModel(tf.keras.Model):
     def infer(self, features):
         output = self.model(features)
         return {
-            "output": output
+            "output": output,
         }
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.string)])
     def save(self, checkpoint_path):
-        tensor_names = [weight.name for weight in self.model.weights]
-        tensors_to_save = [weight.read_value() for weight in self.model.weights]
+        tensor_names = [weight.value.name for weight in self.model.weights]
+        tensors_to_save = [weight.value.read_value() for weight in self.model.weights]
         tf.raw_ops.Save(
             filename=checkpoint_path, tensor_names=tensor_names,
             data=tensors_to_save, name='save')
@@ -63,59 +75,61 @@ class DNNModel(tf.keras.Model):
         restored_tensors = {}
         for var in self.model.weights:
             restored = tf.raw_ops.Restore(
-                file_pattern=checkpoint_path, tensor_name=var.name, dt=var.dtype,
+                file_pattern=checkpoint_path, tensor_name=var.value.name, dt=var.value.dtype,
                 name='restore')
-            var.assign(restored)
-            restored_tensors[var.name] = restored
+            var.value.assign(restored)
+            restored_tensors[var.value.name] = restored
         return restored_tensors
 
-model = DNNModel()
+    def save_model(self, model_path):
+        # Need to have a first call to save it correctly in archive.
+        for signature_name in self.signatures:
+            signature = getattr(self, signature_name)
+            signature.get_concrete_function()
 
-model_path = "./output"
-tf.saved_model.save(
-    model,
-    model_path,
-    signatures={
-        'train' :
-            model.train.get_concrete_function(),
-        'infer' :
-            model.infer.get_concrete_function(),
-        'save' :
-            model.save.get_concrete_function(),
-        'restore' :
-            model.restore.get_concrete_function()
-        })
+        export_archive = keras.export.ExportArchive()
+        export_archive.track(self.model)
 
-# Convert to tflite trainable model
+        for signature_name in self.signatures:
+            signature = getattr(self, signature_name)
+            export_archive.add_endpoint(
+                name=signature_name,
+                fn=signature,
+            )
 
-converter = tf.lite.TFLiteConverter.from_saved_model(
-    model_path,
-    signature_keys=[
-        'train',
-        'infer',
-        'save',
-        'restore'
-        ])
-converter.target_spec.supported_ops = [
-  tf.lite.OpsSet.TFLITE_BUILTINS, # enable TensorFlow Lite ops.
-  tf.lite.OpsSet.SELECT_TF_OPS # enable TensorFlow ops.
-]
-tflite_model = converter.convert()
-converter.experimental_enable_resource_variables = True
-open("dnn_model_trainable.tflite", "wb").write(tflite_model)
+        export_archive.write_out(model_path)
 
-# Convert to tflite inference only model
+    def convert_to_tflite(self, model_path, tflite_path, infer_only=False):
+        signature_keys = self.signatures if not infer_only else ['infer']
 
-model_path = "./output"
-tf.saved_model.save(
-    model,
-    model_path,
-    signatures=model.infer.get_concrete_function()
-    )
+        converter = tf.lite.TFLiteConverter.from_saved_model(
+            model_path,
+            signature_keys=signature_keys)
 
-converter = tf.lite.TFLiteConverter.from_saved_model(model_path)
-converter.target_spec.supported_ops = [
-  tf.lite.OpsSet.TFLITE_BUILTINS, # enable TensorFlow Lite ops.
-]
-tflite_model = converter.convert()
-open("dnn_model_infer.tflite", "wb").write(tflite_model)
+        converter.target_spec.supported_ops = [
+            tf.lite.OpsSet.TFLITE_BUILTINS, # enable TensorFlow Lite ops.
+            tf.lite.OpsSet.SELECT_TF_OPS # enable TensorFlow ops.
+        ]
+
+        tflite_model = converter.convert()
+        converter.experimental_enable_resource_variables = True
+        open(tflite_path, "wb").write(tflite_model)
+
+
+def main():
+    model = DNNModel()
+
+    # Save Model
+    model_path = "./dnn_model"
+    model.save_model(model_path)
+
+    # Convert to tflite trainable model
+    tflite_path = "dnn_model_trainable.tflite"
+    model.convert_to_tflite(model_path, tflite_path)
+
+    # Convert to tflite inference only model
+    tflite_path = "dnn_model_infer.tflite"
+    model.convert_to_tflite(model_path, tflite_path, infer_only=True)
+
+if __name__ == "__main__" :
+    main()
