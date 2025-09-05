@@ -100,8 +100,16 @@ class LinearModel(tf.Module):
     ])
     def accuracy(self, features, targets):
         prediction = self.model(features)
-        accuracy = mean_absolute_percentage_accuracy(targets, prediction)
-        return {"accuracy": accuracy}
+        return_metrics = {}
+        for metric in self.model.metrics:
+            if metric.name == "compile_metrics":
+                metric.update_state(targets, prediction)
+                result = metric.result()
+                if isinstance(result, dict):
+                    return_metrics.update(result)
+                else:
+                    return_metrics[metric.name] = result
+        return return_metrics
 
     def save_model(self, model_path):
         # Need to have a first call to save it correctly in archive.

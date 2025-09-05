@@ -4,7 +4,7 @@
 
 Clone tensorflow github, e.g.:
 
-    git clone --depth 1 --branch v2.16.1 https://github.com/tensorflow/tensorflow.git
+    it clone --depth 1 --branch v2.19.0  https://github.com/tensorflow/tensorflow.git
 
 ### For C++:
 
@@ -19,9 +19,8 @@ In tensorflow src repository:
 In tensorflow src repository:
 
     ./configure
-    bazel build -c opt --define=tflite_convert_with_select_tf_ops=true //tensorflow/tools/pip_package:build_pip_package
-    bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tf_pip
-    cd /tmp/tf_pip; pip install tensorflow-2.16.1-cp311-cp311-linux_x86_64.whl
+    bazel build -c opt --define=tflite_convert_with_select_tf_ops=true --copt=-Wno-gnu-offsetof-extensions //tensorflow/tools/pip_package:wheel --repo_env=USE_PYWRAP_RULES=1 --repo_env=WHEEL_NAME=tensorflow_cpu
+    cd bazel-bin/tensorflow/tools/pip_package/wheel_house/; pip install tensorflow_cpu-2.19.0-cp312-cp312-linux_x86_64.whl
 
 
 ## Compile example:
